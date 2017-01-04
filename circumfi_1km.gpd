@@ -1,0 +1,16 @@
+; East Antarctica 1km cylindrical equal area ellipsoid, true scale at 70S.  
+Map Projection:			Polar Stereographic (ellipsoid) 
+Map Reference Latitude:         -90.0               ; map origin latitude - south pole
+Map Reference Longitude:        0.0                  ; map central meridian
+Map Second Reference Latitude:  -70.0               ; latitude of true scale
+Map Equatorial Radius:          6378137.0           ; wgs84
+Map Polar Radius:               6356752.314245
+
+Map Origin Latitude:            -58.0866               ; top left corner coordinates
+Map Origin Longitude:           310.64
+
+Grid Map Origin Column:		0                      ;grid location of above coords
+Grid Map Origin Row:		0
+Grid Map Units per Cell:	1000                       ;map units per grid square
+Grid Width:			5625
+Grid Height:			4700
