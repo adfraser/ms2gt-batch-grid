@@ -127,7 +127,9 @@ pro batcheverythinggrid_nectaraware, username, servername, hdffolder, outputfold
         spawn, 'rm ./'+modmyd+goodbits+'ch31.img.gz'
 
         
-      endif
+      endif else begin
+        stop  ;For some reason the file doesn't exist as we expected. Did I provide the wrong .gpd file? 
+      endelse
         
     endfor
     
@@ -180,7 +182,9 @@ pro batcheverythinggrid_nectaraware, username, servername, hdffolder, outputfold
         spawn, 'rm ./'+modmyd+'35_L2.A'+goodbits+'.img.gz'
 
         
-      endif
+      endif else begin
+        stop  ;For some reason the file doesn't exist as we expected. Did I provide the wrong .gpd file? 
+      endelse
 
     endfor    
     
@@ -193,73 +197,85 @@ pro batcheverythinggrid_nectaraware, username, servername, hdffolder, outputfold
     ;need to split the search up into 02qs and 03.s.
     spawn, "ssh "+username+"@"+servername+" 'find "+hdffolder+" -type f | grep 02Q | grep hdf | sort '", qkmlist
     spawn, "ssh "+username+"@"+servername+" 'find "+hdffolder+" -type f | grep D03. | grep hdf | sort '", geolist
-
+    
+    
     if n_elements(qkmlist) ne n_elements(geolist) then stop
     
-    spawn, 'rsync -avP --timeout=5 '+username+'@'+servername+':'+qkmlist[i]+' .', exit_status=rsyncreturn
-    while rsyncreturn ne 0 do begin
-      spawn, 'rsync -avP --timeout=10 '+username+'@'+servername+':'+qkmlist[i]+' .', exit_status=rsyncreturn
-    endwhile
-    spawn, 'rsync -avP --timeout=5 '+username+'@'+servername+':'+geolist[i]+' .', exit_status=rsyncreturn
-    while rsyncreturn ne 0 do begin
-      spawn, 'rsync -avP --timeout=10 '+username+'@'+servername+':'+geolist[i]+' .', exit_status=rsyncreturn
-    endwhile    
+    for i=0, n_elements(qkmlist)-1 do begin
     
-    ;generate a new listfile
-    openw, lun, 'listfile.txt', /get_lun
-    printf, lun, file_basename(qkmlist[i])
-    free_lun, lun
-
-    ;run the mod35_l2.pl runfile
-    spawn, './runfile_qkm'
-
-    ;remove all hdfs
-    spawn, 'rm -f *02QKM*.hdf'    
-    
-    
-    if file_test('output_refm_ch01_'+gridxstring+'_'+gridystring+'.img') then begin
-
-      ;get the good bits out of the baselist
-      spawn, 'echo '+file_basename(qkmlist[i])+' | cut -c 11-22', goodbits
-
-      ;also get the first three chars (MOD/MYD)
-      spawn, 'echo '+file_basename(qkmlist[i])+' | cut -c 1-3', modmyd
-      
-      ref=fltarr(gridxsize,gridysize)
-      soze=fltarr(gridxsize,gridysize)
-
-      ;open our new outputs, and perform the soze correction in place.
-      openr, lun, 'output_refm_ch01_'+gridxstring+'_'+gridystring+'.img', /get_lun
-      readu, lun, ref
-      free_lun, lun
-      openr, lun, 'output_scaa_soze_'+gridxstring+'_'+gridystring+'.img', /get_lun
-      readu, lun, soze
-      free_lun, lun
-      ;rm the ref and soze files
-      spawn, 'rm -f *refm*.img'
-      spawn, 'rm -r *scaa*.img'
-      
-      outputdata=ref/cos(soze*!DTOR)
-      outputdata[where(soze ge 86)]=-9999.
-      
-      openw, lun, modmyd+goodbits+'ch01_soze_corrected.img', /get_lun
-      writeu, lun, outputdata
-      free_lun, lun
-      
-      ;zip it
-      spawn, 'gzip '+modmyd+goodbits+'ch01_soze_corrected.img'
-      
-      ;copy it back to whence it came!
-      spawn, 'rsync -rtvP --timeout=5 ./'+modmyd+goodbits+'ch01_soze_corrected.img.gz '+username+'@'+servername+':'+outputfolder, exit_status=rsyncreturn
+      spawn, 'rsync -avP --timeout=5 '+username+'@'+servername+':'+qkmlist[i]+' .', exit_status=rsyncreturn
       while rsyncreturn ne 0 do begin
-        spawn, 'rsync -rtvP --timeout=10 ./'+modmyd+goodbits+'ch01_soze_corrected.img.gz '+username+'@'+servername+':'+outputfolder, exit_status=rsyncreturn
+        spawn, 'rsync -avP --timeout=10 '+username+'@'+servername+':'+qkmlist[i]+' .', exit_status=rsyncreturn
       endwhile
-
-      ;rm it from here
-      spawn, 'rm ./'+modmyd+goodbits+'ch01_soze_corrected.img.gz'
-
-
-    endif
+      spawn, 'rsync -avP --timeout=5 '+username+'@'+servername+':'+geolist[i]+' .', exit_status=rsyncreturn
+      while rsyncreturn ne 0 do begin
+        spawn, 'rsync -avP --timeout=10 '+username+'@'+servername+':'+geolist[i]+' .', exit_status=rsyncreturn
+      endwhile    
+      
+      ;generate a new listfile
+      openw, lun, 'listfile.txt', /get_lun
+      printf, lun, file_basename(qkmlist[i])
+      free_lun, lun
+      
+      
+  
+      ;run the mod35_l2.pl runfile
+      spawn, './runfile_qkm'
+  
+      ;remove all hdfs
+      spawn, 'rm -f *02QKM*.hdf'    
+      spawn, 'rm -f *03*.hdf'
+      
+      
+      if file_test('output_refm_ch01_'+gridxstring+'_'+gridystring+'.img') then begin
+  
+        ;get the good bits out of the baselist
+        spawn, 'echo '+file_basename(qkmlist[i])+' | cut -c 11-22', goodbits
+  
+        ;also get the first three chars (MOD/MYD)
+        spawn, 'echo '+file_basename(qkmlist[i])+' | cut -c 1-3', modmyd
+        
+        
+        ref=fltarr(gridxsize,gridysize)
+        soze=fltarr(gridxsize,gridysize)
+  
+        ;open our new outputs, and perform the soze correction in place.
+        openr, lun, 'output_refm_ch01_'+gridxstring+'_'+gridystring+'.img', /get_lun
+        readu, lun, ref
+        free_lun, lun
+        openr, lun, 'output_scaa_soze_'+gridxstring+'_'+gridystring+'.img', /get_lun
+        readu, lun, soze
+        free_lun, lun
+        
+        ;rm the ref and soze files
+        spawn, 'rm -f *refm*.img'
+        spawn, 'rm -r *scaa*.img'
+        
+        outputdata=ref/cos(soze*!DTOR)
+        outputdata[where(soze ge 86)]=-9999.
+        
+        openw, lun, modmyd+goodbits+'ch01_soze_corrected.img', /get_lun
+        writeu, lun, outputdata
+        free_lun, lun
+        
+        ;zip it
+        spawn, 'gzip '+modmyd+goodbits+'ch01_soze_corrected.img'
+        
+        ;copy it back to whence it came!
+        spawn, 'rsync -rtvP --timeout=5 ./'+modmyd+goodbits+'ch01_soze_corrected.img.gz '+username+'@'+servername+':'+outputfolder, exit_status=rsyncreturn
+        while rsyncreturn ne 0 do begin
+          spawn, 'rsync -rtvP --timeout=10 ./'+modmyd+goodbits+'ch01_soze_corrected.img.gz '+username+'@'+servername+':'+outputfolder, exit_status=rsyncreturn
+        endwhile
+  
+        ;rm it from here
+        spawn, 'rm ./'+modmyd+goodbits+'ch01_soze_corrected.img.gz'
+  
+      endif else begin
+        stop  ;For some reason the file doesn't exist as we expected. Did I provide the wrong .gpd file? 
+      endelse
+      
+  
+    endfor
     
   endif
   
